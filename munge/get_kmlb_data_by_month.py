@@ -64,7 +64,6 @@ print('Writing to disk ...')
 filename = 'data/KMLB' + year + month + '.csv'
 kmlb_data5.to_csv(filename, date_format='%d-%b-%Y %H:%M:%S', 
                   float_format='%.6f', na_rep='999999')
-del(filename)
 
 # now let's append this new data to all KMLB data
 print('Write successful. Appending to data all data ...')
@@ -85,3 +84,14 @@ concat_data = concat_data[~concat_data.index.duplicated(keep='first')]
 # now write this to disk
 concat_data.to_csv('data/KMLB_all.csv', date_format='%d-%b-%Y %H:%M:%S', 
                    float_format='%.6f', na_rep='999999')
+                   
+# commit to github if applicable
+from git import Repo
+import os
+repo = Repo(os.getcwd())
+file_list = [filename, 'data/KMLB_all_old.csv', 'data/KMLB_all_old.csv']
+commit_message = 'Add data for ' + month + '/' + year
+repo.index.add(file_list)
+repo.index.commit(commit_message)
+origin = repo.remote('origin')
+origin.push()
