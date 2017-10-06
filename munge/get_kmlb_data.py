@@ -1,30 +1,42 @@
-# get_kmlb_data_by_month.py
-# bryan holman // v0.1 // 20170926
+# get_kmlb_data.py
+# bryan holman // v0.2 // 20171005
 
-import sys
-import shutil
-import numpy as np
 import pandas as pd
+import numpy as np
+import datetime as dt
+import shutil
 import pytz
 
-year = sys.argv[1]
-month = sys.argv[2]
-# year = '2017'
-# month = '08'
+# input integers of current year and month, return strings of next month to grab data
+def get_next_month(yr, mo):
+    mo_next = dt.datetime(yr, mo, 1, 0, 0, 0) + dt.timedelta(weeks = 5)
+    year = str(mo_next.year)
+    if mo_next.month < 10:
+        month = '0' + str(mo_next.month)
+    else:
+        month = str(mo_next.month)
+    return [year, month]
+
+# grab data for the next month on the list
+month_data = pd.read_csv('data/processed_months.csv')
+mo = month_data['month'][-1:].values[0]
+yr = month_data['year'][-1:].values[0]
+year, month = get_next_month(yr, mo)
 print('Grabbing data for ' + month + '/' + year + ' ...')
-data_url = ('ftp://ftp.ncdc.noaa.gov/pub/data/asos-onemin/6406-' + year + 
+data_url = ('ftp://ftp.ncdc.noaa.gov/pub/data/asos-onemin/6406-' + year +
     '/64060KMLB' + year + month + '.dat')
-column_names = ['Station', 'DateTime', 'Note1', 'Note2', 'Note3', 'Pres1', 
+column_names = ['Station', 'DateTime', 'Note1', 'Note2', 'Note3', 'Pres1',
                 'Pres2', 'Pres3', 'Tmp', 'Dwpt']
-                
+
 # only continue if the data for this month are available
 try:
     kmlb_data = pd.read_fwf(data_url, header=None, names=column_names)
 except:
-    error_msg = ('KMLB data for ' + month + '/' + year + 
+    error_msg = ('KMLB data for ' + month + '/' + year +
                  ' are not available yet. Please try again later.')
     print(error_msg)
     exit()
+
 print('Processing data ...')
 # drop columns we don't need
 kmlb_data = kmlb_data.drop(['Station', 'Note1', 'Note2', 'Note3', 'Tmp', 'Dwpt'], axis=1)
@@ -36,7 +48,7 @@ try:
 except ValueError:
     print('Inferring columns failed. Attempting to do so manually ...')
     kmlb_data = pd.read_fwf(data_url, header=None, dtype=object,
-                            colspecs=[[13, 25], [70, 76], [78, 84], [86, 92]], 
+                            colspecs=[[13, 25], [70, 76], [78, 84], [86, 92]],
                             names=['DateTime', 'Pres1', 'Pres2', 'Pres3'])
     kmlb_data['DateTime'] = pd.to_datetime(kmlb_data['DateTime'])
 kmlb_data = kmlb_data.set_index('DateTime')
@@ -62,7 +74,7 @@ kmlb_data5 = kmlb_data5.drop(['Pres1', 'Pres2', 'Pres3'], axis=1)
 # fill missing values with 999999
 print('Writing to disk ...')
 filename = 'data/KMLB' + year + month + '.csv'
-kmlb_data5.to_csv(filename, date_format='%d-%b-%Y %H:%M:%S', 
+kmlb_data5.to_csv(filename, date_format='%d-%b-%Y %H:%M:%S',
                   float_format='%.6f', na_rep='999999')
 
 # now let's append this new data to all KMLB data
@@ -82,9 +94,13 @@ concat_data = pd.concat([all_data, kmlb_data5])
 concat_data = concat_data[~concat_data.index.duplicated(keep='first')]
 
 # now write this to disk
-concat_data.to_csv('data/KMLB_all.csv', date_format='%d-%b-%Y %H:%M:%S', 
+concat_data.to_csv('data/KMLB_all.csv', date_format='%d-%b-%Y %H:%M:%S',
                    float_format='%.6f', na_rep='999999')
-                   
+
+# update processed_data.csv
+month_data.loc[len(month_data)] = [int(year), int(month)]
+month_data.to_csv('data/processed_months.csv', index=False)
+
 # commit to github if applicable
 from git import Repo
 import os
