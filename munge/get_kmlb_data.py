@@ -102,10 +102,12 @@ month_data.loc[len(month_data)] = [int(year), int(month)]
 month_data.to_csv('data/processed_months.csv', index=False)
 
 # commit to github if applicable
+print('Committing to GitHub ...')
 from git import Repo
 import os
 repo = Repo(os.getcwd())
-file_list = [filename, 'data/KMLB_all_old.csv', 'data/KMLB_all_old.csv']
+file_list = [filename, 'data/KMLB_all_old.csv', 'data/KMLB_all.csv', 
+             'data/processed_months.csv']
 commit_message = 'Add data for ' + month + '/' + year
 repo.index.add(file_list)
 repo.index.commit(commit_message)
